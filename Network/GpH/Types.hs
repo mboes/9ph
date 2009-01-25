@@ -35,7 +35,7 @@ data Request = Tversion ByteString
              | Tauth Word32 ByteString ByteString
              | Tflush Tag
              | Tattach File File ByteString ByteString
-             | Twalk File File Word16 [ByteString]
+             | Twalk File File [ByteString]
              | Topen File Mode
              | Tcreate File ByteString Permission Mode
              | Tread File Offset Count
