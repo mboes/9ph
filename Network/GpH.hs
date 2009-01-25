@@ -8,7 +8,7 @@ type Size = Word32
 type Tag = Word16
 type Offset = Word64
 type Field = ByteString
-type Id = Word32
+type File = Word32
 type Mode = Word8
 type Count = Word32
 type IOUnit = Word32
@@ -34,16 +34,16 @@ type Permission = Word32
 data Request = Tversion ByteString
              | Tauth Word32 ByteString ByteString
              | Tflush Tag
-             | Tattach Id Id ByteString ByteString
-             | Twalk Id Id Word16 [ByteString]
-             | Topen Id Mode
-             | Tcreate Id ByteString Permission Mode
-             | Tread Id Offset Count
-             | Twrite Id Offset Count ByteString
-             | Tclunk Id
-             | Tremove Id
-             | Tstat Id
-             | Twstat Id ByteString
+             | Tattach File File ByteString ByteString
+             | Twalk File File Word16 [ByteString]
+             | Topen File Mode
+             | Tcreate File ByteString Permission Mode
+             | Tread File Offset Count
+             | Twrite File Offset Count ByteString
+             | Tclunk File
+             | Tremove File
+             | Tstat File
+             | Twstat File ByteString
 
 -- Based on the following abstraction of the wire protocol for
 -- responses given in the Plan9 Fourth Edition manual:
