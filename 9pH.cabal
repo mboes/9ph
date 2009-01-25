@@ -1,0 +1,22 @@
+name:           9pH
+version:        0.1
+author:         Mathieu Boespflug, Christophe Calvès
+homepage:       http://code.haskell.org/~mboes/vcard.git
+synopsis:       A basic solution. Pure Haskell implementation of 9p.
+description:
+        9p is a network file protocol originally for Plan9 from Bell Labs.
+        9pH is a pure Haskell implementation of the protocol that can be
+        used for 9p servers as well as 9p clients.
+category:       Network
+license:        BSD3
+license-file:   LICENSE
+copyright:      (c) 2009. Mathieu Boespflug <mboes@tweag.net>
+                (c) 2009. Christophe Calvès <christophe.calves@crans.org>
+cabal-version:  >= 1.2.0
+build-type:     Simple
+tested-with:    GHC ==6.10
+
+library
+    extensions:      OverloadedStrings, PatternGuards
+    build-depends:   base >= 3, containers, bytestring >= 0.9
+    exposed-modules: Network.GpH
