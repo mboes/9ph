@@ -39,7 +39,7 @@ data Request = Tversion ByteString
              | Topen File Mode
              | Tcreate File ByteString Permission Mode
              | Tread File Offset Count
-             | Twrite File Offset Count ByteString
+             | Twrite File Offset ByteString
              | Tclunk File
              | Tremove File
              | Tstat File
