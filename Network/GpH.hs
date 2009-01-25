@@ -1,7 +1,6 @@
 module Network.GpH where
 
 import Data.Word
-import Data.Array.Unboxed
 import Data.ByteString
 
 
