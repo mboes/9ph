@@ -6,7 +6,9 @@ import Network.GpH.Types
 import Data.Maybe (fromJust)
 import Data.Bits
 import Data.Word
-import qualified Data.Map as Map
+import Data.Array.IArray
+import Data.Data
+import Data.Generics.Aliases
 import Control.Monad
 import Prelude hiding (read)
 
@@ -16,12 +18,6 @@ newtype Dec a = Dec { unDec :: B.ByteString -> (a, B.ByteString) }
 instance Monad Dec where
     return x = Dec $ \s -> (x, s)
     m >>= k  = Dec $ \s -> let (x, s') = unDec m s in unDec (k x) s'
-
-
--- Message codes, from 9p.h in Plan9 implementation of 9p.
-msgCodes = Map.fromList $ zip (filter even [0..])
-           [ version, auth, attach, undefined, flush, walk, open
-           , create, read, write, clunk, remove, stat, wstat ]
 
 decode :: B.ByteString -> [Request]
 decode = fst . unDec (forever request)
@@ -33,26 +29,18 @@ request :: Dec Request
 request = do
   size <- word32
   req  <- byte
-  tag  <- word16
-  msgCodes Map.! req
+  tag  <- word32
+  fromConstrM dispatch (lookupConstr req)
+    where dispatch :: Data d => Dec d
+          dispatch = error "Impossible."
+                     `extR` word16 `extR` word32 `extR` word64
+                     `extR` arbitrary `extR` list arbitrary
 
-version = return Tversion `ap` arbitrary
-auth    = return Tauth `ap` word32 `ap` arbitrary `ap` arbitrary
-flush   = return Tflush `ap` word16
-attach  = return Tattach `ap` word32 `ap` word32 `ap` arbitrary `ap` arbitrary
-walk    = do f <- return Twalk `ap` word32 `ap` word32
-             count <- word16
-             return f `ap` replicateM (fromIntegral count) arbitrary
-open    = return Topen `ap` word32 `ap` byte
-create  = return Tcreate `ap` word32 `ap` arbitrary `ap` word32 `ap` byte
-read    = return Tread `ap` word32 `ap` word64 `ap` word32
-write   = do f <- return Twrite `ap` word32 `ap` word64
-             count <- word32
-             return f `ap` bytes (fromIntegral count)
-clunk   = return Tclunk `ap` word32
-remove  = return Tremove `ap` word32
-stat    = return Tstat `ap` word32
-wstat   = return Twstat `ap` word32 `ap` arbitrary
+lookupConstr = let constructors :: Array Int Constr
+                   constructors =
+                       listArray (0, 14) $ dataTypeConstrs
+                                     $ dataTypeOf (undefined :: Request)
+               in \i -> constructors ! ((fromIntegral i - 100) `div` 2)
 
 -- Combinators
 
@@ -61,6 +49,8 @@ bytes n = Dec $ \bs -> B.splitAt n bs
 
 -- | The number of bytes to parse is given in the first two bytes of the input.
 arbitrary = word16 >>= \n -> Dec $ \bs -> B.splitAt (fromIntegral n) bs
+
+list m = word16 >>= \n -> replicateM (fromIntegral n) m
 
 word16 :: Dec Word16
 word16 = do x1 <- byte; x2 <- byte
