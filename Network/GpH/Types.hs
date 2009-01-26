@@ -2,6 +2,8 @@ module Network.GpH.Types where
 
 import Data.Word
 import Data.ByteString
+import Data.Typeable
+import Data.Data
 
 
 type Size = Word32
@@ -44,6 +46,7 @@ data Request = Tversion ByteString
              | Tremove File
              | Tstat File
              | Twstat File ByteString
+               deriving (Eq, Ord, Show, Data, Typeable)
 
 -- Based on the following abstraction of the wire protocol for
 -- responses given in the Plan9 Fourth Edition manual:
@@ -77,3 +80,4 @@ data Reply = Rversion ByteString
            | Rremove
            | Rstat ByteString
            | Rwstat
+             deriving (Eq, Ord, Show, Data, Typeable)
