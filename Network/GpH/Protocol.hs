@@ -9,17 +9,21 @@ import Data.Array.IArray
 import Data.Data
 import Data.Generics.Aliases
 import Data.Binary
+import Foreign.Storable (sizeOf)
 import Prelude hiding (read)
 
 
-newtype Dec a = Dec { unDec :: B.ByteString -> (a, B.ByteString) }
-
-instance Monad Dec where
-    return x = Dec $ \s -> (x, s)
-    m >>= k  = Dec $ \s -> let (x, s') = unDec m s in unDec (k x) s'
-
-decode :: B.ByteString -> [Request]
-decode = fst . unDec (forever request)
+size :: (Data d, Num n) => d -> n
+size = gmapQl (+) 0 dispatch where
+    dispatch :: (Data d, Num n) => d -> n
+    dispatch = error "Impossible"
+               `extQ` word16 `extQ` word32 `extQ` word64
+               `extQ` arbitrary `extQ` list arbitrary
+    word16 x = fromIntegral $ sizeOf (x :: Word16)
+    word32 x = fromIntegral $ sizeOf (x :: Word32)
+    word64 x = fromIntegral $ sizeOf (x :: Word64)
+    arbitrary x = fromIntegral $ B.length (x :: B.ByteString)
+    list f = sum . map f
 
 reply :: Put
 reply = undefined
