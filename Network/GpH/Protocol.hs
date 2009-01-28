@@ -1,15 +1,14 @@
 -- | Parse a stream of requests and dump a stream of responses.
 module Network.GpH.Protocol (decode, encode) where
 
-import qualified Data.ByteString as B
+import qualified Data.ByteString.Lazy as B
 import Network.GpH.Types
-import Data.Maybe (fromJust)
-import Data.Bits
+import Control.Monad
 import Data.Word
 import Data.Array.IArray
 import Data.Data
 import Data.Generics.Aliases
-import Control.Monad
+import Data.Binary
 import Prelude hiding (read)
 
 
@@ -22,17 +21,17 @@ instance Monad Dec where
 decode :: B.ByteString -> [Request]
 decode = fst . unDec (forever request)
 
-encode :: [Reply] -> B.ByteString
-encode = undefined
+reply :: Put
+reply = undefined
 
-request :: Dec Request
+request :: Get Request
 request = do
   size <- word32
-  req  <- byte
+  req  <- getWord8
   tag  <- word32
   fromConstrM dispatch (lookupConstr req)
-    where dispatch :: Data d => Dec d
-          dispatch = error "Impossible."
+    where dispatch :: Data d => Get d
+          dispatch = error "Impossible"
                      `extR` word16 `extR` word32 `extR` word64
                      `extR` arbitrary `extR` list arbitrary
 
@@ -44,22 +43,10 @@ lookupConstr = let constructors :: Array Int Constr
 
 -- Combinators
 
-byte = Dec $ fromJust . B.uncons
-bytes n = Dec $ \bs -> B.splitAt n bs
-
 -- | The number of bytes to parse is given in the first two bytes of the input.
-arbitrary = word16 >>= \n -> Dec $ \bs -> B.splitAt (fromIntegral n) bs
-
+arbitrary = word16 >>= \n -> replicateM (fromIntegral n) getWord8
 list m = word16 >>= \n -> replicateM (fromIntegral n) m
 
-word16 :: Dec Word16
-word16 = do x1 <- byte; x2 <- byte
-            return $ shiftL (fromIntegral x1) 8 .|. fromIntegral x2
-
-word32 :: Dec Word32
-word32 = do x1 <- word16; x2 <- word16
-            return $ shiftL (fromIntegral x1) 16 .|. fromIntegral x2
-
-word64 :: Dec Word64
-word64 = do x1 <- word32; x2 <- word32
-            return $ shiftL (fromIntegral x1) 32 .|. fromIntegral x2
+word16 = get :: Get Word16
+word32 = get :: Get Word32
+word64 = get :: Get Word64
