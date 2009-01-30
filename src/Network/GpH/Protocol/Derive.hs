@@ -19,6 +19,12 @@ import Control.Monad
 --     arbitrary x = fromIntegral $ B.length (x :: B.ByteString)
 --     list f = sum . map f
 
+requestFromIndex :: Int -> Word8
+requestFromIndex x = fromIntegral (100 + (x * 2))
+
+indexFromRequest :: Word8 -> Int
+indexFromRequest x = fromIntegral ((x - 100) `div` 2)
+
 derive :: Data a => a -> Q [Dec]
 derive x = sequence [storableInst, decodeD, encodeD]
     where storableInst = do
@@ -53,7 +59,7 @@ derive x = sequence [storableInst, decodeD, encodeD]
             let pat = AsP c (ConP con (map (VarP . fst) args))
             return $ Clause [pat] (NormalB (DoE (putsizeOfS c : putreqCodeS n : map gputS args))) []
           putsizeOfS c = NoBindS $ putE $ AppE (var "sizeOf") (VarE c)
-          putreqCodeS n = NoBindS $ putE (SigE (LitE (IntegerL (fromIntegral n))) (ConT (mkName "Word32")))
+          putreqCodeS n = NoBindS $ putE (SigE (LitE (IntegerL (fromIntegral (requestFromIndex n)))) (ConT (mkName "Word8")))
           gputS (arg, ty) =
               NoBindS $ case ty of
                           "Data.ByteString.Internal.ByteString" -> putByteStringS arg
