@@ -10,7 +10,7 @@ type Size = Word32
 type Tag = Word16
 type Offset = Word64
 type Field = ByteString
-type File = Word32
+type Fid = Word32
 type Mode = Word8
 type Count = Word32
 type IOUnit = Word32
@@ -36,16 +36,16 @@ type Permission = Word32
 data Request = Tversion Size ByteString
              | Tauth Word32 ByteString ByteString
              | Tflush Tag
-             | Tattach File File ByteString ByteString
-             | Twalk File File [ByteString]
-             | Topen File Mode
-             | Tcreate File ByteString Permission Mode
-             | Tread File Offset Count
-             | Twrite File Offset ByteString
-             | Tclunk File
-             | Tremove File
-             | Tstat File
-             | Twstat File ByteString
+             | Tattach Fid Fid ByteString ByteString
+             | Twalk Fid Fid [ByteString]
+             | Topen Fid Mode
+             | Tcreate Fid ByteString Permission Mode
+             | Tread Fid Offset Count
+             | Twrite Fid Offset ByteString
+             | Tclunk Fid
+             | Tremove Fid
+             | Tstat Fid
+             | Twstat Fid ByteString
                deriving (Eq, Ord, Show, Data, Typeable)
 
 -- Based on the following abstraction of the wire protocol for
