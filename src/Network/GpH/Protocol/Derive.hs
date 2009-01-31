@@ -59,16 +59,17 @@ derive x = liftM (:[]) protocolInst
           -- 'size' functions
           sizeClause (con, argsm) = do
             args <- sequence argsm
-            sizes <- mapM gsize args
+            sizes <- liftM (LitE (IntegerL 7) :) $ mapM gsize args
             c <- newName "c"
             let pat = AsP c (ConP con (map (VarP . fst) args))
             return $ Clause [pat] (NormalB (AppE (var "sum") (ListE sizes))) []
               where gsize (arg, ty) =
                         case ty of
                           "Data.ByteString.Lazy.Internal.ByteString" ->
-                              [| fromIntegral (B.length $(varE arg)) :: Word32 |]
+                              [| 2 + fromIntegral (B.length $(varE arg)) :: Word32 |]
                           "[]" ->
-                              [| fromIntegral (length $(varE arg)) :: Word32 |]
+                              [| 2 + fromIntegral
+                                 (sum (map (\x -> 2 + B.length x) $(varE arg))) :: Word32 |]
                           _ -> [| $(litE (integerL (sizeOf ty))) |]
                     sizeOf "Word8" = 1
                     sizeOf "Word16" = 2
