@@ -19,7 +19,7 @@ type Permission = Word32
 -- Based on the following abstraction of the wire protocol for
 -- requests given in the Plan9 Fourth Edition manual:
 --
---    Tversion version[s]
+--    Tversion msize[4] version[s]
 --    Tauth afid[4] uname[s] aname[s]
 --    Tflush oldtag[2]
 --    Tattach fid[4] afid[4] uname[s] aname[s]
@@ -33,7 +33,7 @@ type Permission = Word32
 --    Tstat fid[4]
 --    Twstat fid[4] stat[n]
 
-data Request = Tversion ByteString
+data Request = Tversion Size ByteString
              | Tauth Word32 ByteString ByteString
              | Tflush Tag
              | Tattach File File ByteString ByteString
@@ -51,7 +51,7 @@ data Request = Tversion ByteString
 -- Based on the following abstraction of the wire protocol for
 -- responses given in the Plan9 Fourth Edition manual:
 --
---    Rversion version[s]
+--    Rversion msize[4] version[s]
 --    Rauth aqid[13]
 --    Rerror ename[s]
 --    Rflush
@@ -66,7 +66,7 @@ data Request = Tversion ByteString
 --    Rstat stat[n]
 --    Rwstat
 
-data Reply = Rversion ByteString
+data Reply = Rversion Size ByteString
            | Rauth ByteString
            | Rerror ByteString
            | Rflush
