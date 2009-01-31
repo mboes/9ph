@@ -7,7 +7,7 @@ import Data.Binary hiding (decode, encode)
 import Data.Binary.Put
 import Data.Binary.Get
 import Data.Word
-import qualified Data.ByteString.Lazy as B
+import qualified Data.ByteString.Lazy.Char8 as B
 
 
 class Protocol a where
