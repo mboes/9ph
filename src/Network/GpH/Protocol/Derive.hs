@@ -11,18 +11,6 @@ import Data.Array
 import qualified Data.ByteString.Lazy as B
 
 
--- size :: (Data d, Num n) => d -> n
--- size = gmapQl (+) 0 dispatch where
---     dispatch :: (Data d, Num n) => d -> n
---     dispatch = error "Impossible"
---                `extQ` word16 `extQ` word32 `extQ` word64
---                `extQ` arbitrary `extQ` list arbitrary
---     word16 x = fromIntegral $ sizeOf (x :: Word16)
---     word32 x = fromIntegral $ sizeOf (x :: Word32)
---     word64 x = fromIntegral $ sizeOf (x :: Word64)
---     arbitrary x = fromIntegral $ B.length (x :: B.ByteString)
---     list f = sum . map f
-
 requestFromIndex :: Int -> Word8
 requestFromIndex x = fromIntegral (100 + (x * 2))
 
@@ -36,18 +24,25 @@ derive x = liftM (:[]) protocolInst
             return $ InstanceD []
                        (AppT (ConT (mkName "Protocol"))
                                  (ConT (mkName (typeName x)))) methods
+
+          -- define 'size'
           sizeD = do
             clauses <- mapM sizeClause constructors
             return $ decl "size" clauses
-          decodeD = do
-            body <-
-                [| let reqs = listArray (0, 14)
-                              $(liftM ListE $ mapM getBuilder constructors)
-                   in runGet $ do get :: Get Word32;
-                                  req <- get :: Get Word8;
-                                  get :: Get Word16;
-                                  reqs ! fromIntegral ((req - 100) `div` 2) |]
-            return $ decl "decode" [Clause [] (NormalB body) []]
+
+          -- define 'decode'
+          decodeD =
+              liftM head
+              [d| decode =
+                    let reqs = listArray (0, 14)
+                               $(liftM ListE $ mapM getBuilder constructors)
+                    in runGet $ do get :: Get Word32;
+                                   req <- get :: Get Word8;
+                                   get :: Get Word16;
+                                   reqs ! fromIntegral ((req - 100) `div` 2)
+               |]
+
+          -- define 'encode'
           encodeD = do
             x <- newName "x"
             m <- newName "m"
@@ -60,37 +55,45 @@ derive x = liftM (:[]) protocolInst
                                         return (x, typeName arg))
                                  $ fromConstr con `asTypeOf` x
                     )
+
+          -- 'size' functions
           sizeClause (con, argsm) = do
             args <- sequence argsm
+            sizes <- mapM gsize args
             c <- newName "c"
             let pat = AsP c (ConP con (map (VarP . fst) args))
-            return $ Clause [pat] (NormalB (AppE (var "sum") (ListE (map gsize args)))) []
+            return $ Clause [pat] (NormalB (AppE (var "sum") (ListE sizes))) []
               where gsize (arg, ty) =
                         case ty of
                           "Data.ByteString.Lazy.Internal.ByteString" ->
-                              coerce (AppE (var "B.length") (VarE arg)) word32
+                              [| fromIntegral (B.length $(varE arg)) :: Word32 |]
                           "[]" ->
-                              coerce (AppE (var "length") (VarE arg)) word32
-                          _ -> LitE (IntegerL (fromIntegral (sizeOf ty)))
+                              [| fromIntegral (length $(varE arg)) :: Word32 |]
+                          _ -> [| $(litE (integerL (sizeOf ty))) |]
                     sizeOf "Word8" = 1
                     sizeOf "Word16" = 2
                     sizeOf "Word32" = 4
                     sizeOf "Word64" = 8
                     sizeOf x = error $ "Unrecognized type: " ++ x
+
+          -- 'encode' functions
           putClause (n, (con, argsm)) = do
             args <- sequence argsm
             puts <- mapM gputS args
             c <- newName "c"
             let pat = AsP c (ConP con (map (VarP . fst) args))
-            return $ Clause [pat] (NormalB (DoE (putsizeOfS c : putreqCodeS n : puts))) []
-          putsizeOfS c = NoBindS $ putE $ AppE (var "size") (VarE c)
-          putreqCodeS n = NoBindS $ putE (SigE (LitE (IntegerL (fromIntegral (requestFromIndex n)))) word8)
+            header <- sequence [putsizeOfS c, putreqCodeS n]
+            return $ Clause [pat] (NormalB (DoE (header ++ puts))) []
+          putsizeOfS c = return $ NoBindS $ putE $ AppE (var "size") (VarE c)
+          putreqCodeS n =
+              liftM NoBindS
+              [| put ($(litE (integerL (fromIntegral (requestFromIndex n)))) :: Word8) |]
           gputS (arg, ty) =
               case ty of
                 "Data.ByteString.Lazy.Internal.ByteString" ->
-                    return NoBindS `ap` putByteStringS (return (VarE arg))
+                    return NoBindS `ap` putByteStringS (varE arg)
                 "Prelude.[]" ->
-                    return NoBindS `ap` putByteStringListS (return (VarE arg))
+                    return NoBindS `ap` putByteStringListS (varE arg)
                 _ -> return $ NoBindS (putE (VarE arg))
           putByteStringS x =
               [| do put (fromIntegral (B.length $x) :: Word16)
@@ -102,6 +105,8 @@ derive x = liftM (:[]) protocolInst
                           putLazyByteString xs
                     put len
                     mapM_ f $x |]
+
+          -- 'decode' functions
           getBuilder (con, argsm) = do
             args <- sequence argsm
             binds <- mapM ggetS args
@@ -115,24 +120,15 @@ derive x = liftM (:[]) protocolInst
                 "Prelude.[]" ->
                     return (BindS (VarP arg)) `ap` getByteStringListQ
                 _ -> return (BindS (VarP arg) getE)
-          getByteStringQ = do
-             size <- newName "size"
-             return $ DoE [ BindS (SigP (VarP size) word16) getE
-                          , NoBindS $
-                            AppE (VarE (mkName "getLazyByteString"))
-                                     (AppE (VarE (mkName "fromIntegral")) (VarE size)) ]
-          getByteStringListQ = do
-             size <- newName "size"
-             getByteStringE <- getByteStringQ
-             return $ DoE [ BindS (SigP (VarP size) word8) getE
-                          , NoBindS $
-                            AppE (AppE (VarE (mkName "replicateM"))
-                                  (AppE (VarE (mkName "fromIntegral")) (VarE size))) getByteStringE ]
+          getByteStringQ =
+              [| do size <- get :: Get Word16
+                    getLazyByteString (fromIntegral size) |]
+          getByteStringListQ =
+              [| do size <- get :: Get Word8
+                    replicateM (fromIntegral size) $getByteStringQ |]
+
+          -- Utilities
           var = VarE . mkName
           decl x clauses = FunD (mkName x) clauses
           putE = AppE (VarE (mkName "put"))
           getE = VarE (mkName "get")
-          coerce exp ty = SigE (AppE (var "fromIntegral") exp) ty
-          word8 = ConT (mkName "Word8")
-          word16 = ConT (mkName "Word16")
-          word32 = ConT (mkName "Word32")
