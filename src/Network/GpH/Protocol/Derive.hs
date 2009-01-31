@@ -3,10 +3,12 @@ module Network.GpH.Protocol.Derive (derive) where
 import Language.Haskell.TH
 import Data.Binary
 import Data.Binary.Get
+import Data.Binary.Put
 import Data.Generics
 import Control.Monad
 import Foreign.Storable
 import Data.Array
+import qualified Data.ByteString.Lazy as B
 
 
 -- size :: (Data d, Num n) => d -> n
@@ -77,21 +79,29 @@ derive x = liftM (:[]) protocolInst
                     sizeOf x = error $ "Unrecognized type: " ++ x
           putClause (n, (con, argsm)) = do
             args <- sequence argsm
+            puts <- mapM gputS args
             c <- newName "c"
             let pat = AsP c (ConP con (map (VarP . fst) args))
-            return $ Clause [pat] (NormalB (DoE (putsizeOfS c : putreqCodeS n : map gputS args))) []
+            return $ Clause [pat] (NormalB (DoE (putsizeOfS c : putreqCodeS n : puts))) []
           putsizeOfS c = NoBindS $ putE $ AppE (var "size") (VarE c)
           putreqCodeS n = NoBindS $ putE (SigE (LitE (IntegerL (fromIntegral (requestFromIndex n)))) word8)
           gputS (arg, ty) =
-              NoBindS $ case ty of
-                          "Data.ByteString.Lazy.Internal.ByteString" ->
-                              putByteStringS arg
-                          "Prelude.[]" -> putByteStringListS arg
-                          _ -> putE (VarE arg)
+              case ty of
+                "Data.ByteString.Lazy.Internal.ByteString" ->
+                    return NoBindS `ap` putByteStringS (return (VarE arg))
+                "Prelude.[]" ->
+                    return NoBindS `ap` putByteStringListS (return (VarE arg))
+                _ -> return $ NoBindS (putE (VarE arg))
           putByteStringS x =
-              DoE [ NoBindS $ putE $ coerce (AppE (var "B.length") (VarE x)) word16
-                  , NoBindS $ AppE (var "putLazyByteString") (VarE x) ]
-          putByteStringListS = undefined -- xxx
+              [| do put (fromIntegral (B.length $x) :: Word16)
+                    putLazyByteString $x |]
+          putByteStringListS x =
+              [| do let len = fromIntegral $ length $x :: Word8
+                        f xs = do
+                          put (fromIntegral (B.length xs) :: Word16)
+                          putLazyByteString xs
+                    put len
+                    mapM_ f $x |]
           getBuilder (con, argsm) = do
             args <- sequence argsm
             binds <- mapM ggetS args
