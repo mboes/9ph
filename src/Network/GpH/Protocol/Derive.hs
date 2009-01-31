@@ -88,20 +88,19 @@ derive x = liftM (:[]) protocolInst
           putreqCodeS n =
               liftM NoBindS
               [| put ($(litE (integerL (fromIntegral (requestFromIndex n)))) :: Word8) |]
-          putTagS = liftM NoBindS
-                    [| put (0 :: Word16) |]
+          putTagS = liftM NoBindS [| put (0 :: Word16) |]
           gputS (arg, ty) =
               case ty of
                 "Data.ByteString.Lazy.Internal.ByteString" ->
                     return NoBindS `ap` putByteStringS (varE arg)
-                "Prelude.[]" ->
+                "[]" ->
                     return NoBindS `ap` putByteStringListS (varE arg)
                 _ -> return $ NoBindS (putE (VarE arg))
           putByteStringS x =
               [| do put (fromIntegral (B.length $x) :: Word16)
                     putLazyByteString $x |]
           putByteStringListS x =
-              [| do let len = fromIntegral $ length $x :: Word8
+              [| do let len = fromIntegral $ length $x :: Word16
                         f xs = do
                           put (fromIntegral (B.length xs) :: Word16)
                           putLazyByteString xs
