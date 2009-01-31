@@ -49,16 +49,16 @@ derive x = liftM (:[]) protocolInst
           encodeD = do
             x <- newName "x"
             m <- newName "m"
-            clauses <- mapM putClause constructors
+            clauses <- mapM putClause $ zip [0..] constructors
             return $ FunD (mkName "encode") [Clause [VarP x] (NormalB (AppE (var "runPut") (AppE (VarE m) (VarE x)))) [FunD m clauses]]
           typeName x = tyConString $ fst $ splitTyConApp $ typeOf x
-          constructors = zip [(0 :: Int)..] $ map gen $ dataTypeConstrs $ dataTypeOf x
+          constructors = map gen $ dataTypeConstrs $ dataTypeOf x
           gen con = ( mkName (showConstr con)
-                    , gmapQ (\x -> do n <- newName "x"
-                                      return (n, typeName x))
+                    , gmapQ (\arg -> do x <- newName "x"
+                                        return (x, typeName arg))
                                  $ fromConstr con `asTypeOf` x
                     )
-          sizeClause (_, (con, argsm)) = do
+          sizeClause (con, argsm) = do
             args <- sequence argsm
             c <- newName "c"
             let pat = AsP c (ConP con (map (VarP . fst) args))
@@ -92,7 +92,7 @@ derive x = liftM (:[]) protocolInst
               DoE [ NoBindS $ putE $ coerce (AppE (var "B.length") (VarE x)) word16
                   , NoBindS $ AppE (var "putLazyByteString") (VarE x) ]
           putByteStringListS = undefined -- xxx
-          getBuilder (n, (con, argsm)) = do
+          getBuilder (con, argsm) = do
             args <- sequence argsm
             binds <- mapM ggetS args
             let ret = NoBindS $ AppE (var "return")
