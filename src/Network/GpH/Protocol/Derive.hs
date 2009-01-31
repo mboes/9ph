@@ -82,12 +82,14 @@ derive x = liftM (:[]) protocolInst
             puts <- mapM gputS args
             c <- newName "c"
             let pat = AsP c (ConP con (map (VarP . fst) args))
-            header <- sequence [putsizeOfS c, putreqCodeS n]
+            header <- sequence [putsizeOfS c, putreqCodeS n, putTagS]
             return $ Clause [pat] (NormalB (DoE (header ++ puts))) []
           putsizeOfS c = return $ NoBindS $ putE $ AppE (var "size") (VarE c)
           putreqCodeS n =
               liftM NoBindS
               [| put ($(litE (integerL (fromIntegral (requestFromIndex n)))) :: Word8) |]
+          putTagS = liftM NoBindS
+                    [| put (0 :: Word16) |]
           gputS (arg, ty) =
               case ty of
                 "Data.ByteString.Lazy.Internal.ByteString" ->

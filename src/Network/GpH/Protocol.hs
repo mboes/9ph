@@ -17,3 +17,4 @@ class Protocol a where
 
 $(derive (undefined :: Request))
 
+$(derive (undefined :: Reply))
