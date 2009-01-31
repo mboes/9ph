@@ -16,8 +16,12 @@ type Count = Word32
 type IOUnit = Word32
 type Permission = Word32
 
--- A 13-byte wide field used to represent server-side unique identifiers.
+-- | A 13-byte wide field used to represent server-side unique identifiers.
 newtype Qid = Qid ByteString
+
+-- | An arbitrary size field containing data read / to write. Can be
+-- larger than regular Names (whose max size is 2^16 bytes).
+newtype Data = Data ByteString
 
 -- Based on the following abstraction of the wire protocol for
 -- requests given in the Plan9 Fourth Edition manual:
@@ -44,7 +48,7 @@ data Request = Tversion Size ByteString
              | Topen Fid Mode
              | Tcreate Fid ByteString Permission Mode
              | Tread Fid Offset Count
-             | Twrite Fid Offset ByteString
+             | Twrite Fid Offset Data
              | Tclunk Fid
              | Tremove Fid
              | Tstat Fid
@@ -77,7 +81,7 @@ data Reply = Rversion Size ByteString
            | Rwalk [Qid]
            | Ropen Qid IOUnit
            | Rcreate Qid IOUnit
-           | Rread Count ByteString
+           | Rread Data
            | Rwrite Count
            | Rclunk
            | Rremove
