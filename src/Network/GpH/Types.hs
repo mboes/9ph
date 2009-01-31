@@ -6,22 +6,33 @@ import Data.Typeable
 import Data.Data
 
 
+-- | A 13-byte wide field used to represent server-side unique identifiers.
+newtype Qid = Qid ByteString
+    deriving (Eq, Ord, Show, Data, Typeable)
+
+-- | An arbitrary size field containing data read / to write.
+data FData
+
+-- | Used to hold user names, file names.
+data Name
+
+-- | For version, error messages.
+data Info
+
+-- | A field of arbitrary size. The type constructor is indexed by a
+-- phantom type indicating the semantics of the field and how to
+-- decode/encode it.
+newtype UField a = UF ByteString
+    deriving (Eq, Ord, Show, Data, Typeable)
+
 type Size = Word32
 type Tag = Word16
 type Offset = Word64
-type Field = ByteString
 type Fid = Word32
 type Mode = Word8
 type Count = Word32
 type IOUnit = Word32
 type Permission = Word32
-
--- | A 13-byte wide field used to represent server-side unique identifiers.
-newtype Qid = Qid ByteString
-
--- | An arbitrary size field containing data read / to write. Can be
--- larger than regular Names (whose max size is 2^16 bytes).
-newtype Data = Data ByteString
 
 -- Based on the following abstraction of the wire protocol for
 -- requests given in the Plan9 Fourth Edition manual:
@@ -40,20 +51,20 @@ newtype Data = Data ByteString
 --    Tstat fid[4]
 --    Twstat fid[4] stat[n]
 
-data Request = Tversion Size ByteString
-             | Tauth Word32 ByteString ByteString
+data Request = Tversion Size (UField Info)
+             | Tauth Word32 (UField Name) (UField Name)
              | Tflush Tag
-             | Tattach Fid Fid ByteString ByteString
-             | Twalk Fid Fid [ByteString]
+             | Tattach Fid Fid (UField Name) (UField Name)
+             | Twalk Fid Fid [UField Name]
              | Topen Fid Mode
-             | Tcreate Fid ByteString Permission Mode
+             | Tcreate Fid (UField Name) Permission Mode
              | Tread Fid Offset Count
-             | Twrite Fid Offset Data
+             | Twrite Fid Offset (UField FData)
              | Tclunk Fid
              | Tremove Fid
              | Tstat Fid
              | Twstat Fid ByteString
-               deriving (Eq, Ord, Show, Data, Typeable)
+               deriving (Eq, Ord, Show, FData, Typeable)
 
 -- Based on the following abstraction of the wire protocol for
 -- responses given in the Plan9 Fourth Edition manual:
@@ -73,15 +84,15 @@ data Request = Tversion Size ByteString
 --    Rstat stat[n]
 --    Rwstat
 
-data Reply = Rversion Size ByteString
+data Reply = Rversion Size (UField Info)
            | Rauth Qid
-           | Rerror ByteString
+           | Rerror (UField Info)
            | Rflush
            | Rattach Qid
            | Rwalk [Qid]
            | Ropen Qid IOUnit
            | Rcreate Qid IOUnit
-           | Rread Data
+           | Rread (UField FData)
            | Rwrite Count
            | Rclunk
            | Rremove
