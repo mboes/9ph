@@ -2,9 +2,11 @@ module Network.GpH.Protocol.Derive (derive) where
 
 import Language.Haskell.TH
 import Data.Binary
+import Data.Binary.Get
 import Data.Generics
 import Control.Monad
 import Foreign.Storable
+import Data.Array
 
 
 -- size :: (Data d, Num n) => d -> n
@@ -35,7 +37,15 @@ derive x = liftM (:[]) protocolInst
           sizeD = do
             clauses <- mapM sizeClause constructors
             return $ decl "size" clauses
-          decodeD = liftM head [d| decode = undefined |]
+          decodeD = do
+            body <-
+                [| let reqs = listArray (0, 14)
+                              $(liftM ListE $ mapM getBuilder constructors)
+                   in runGet $ do get :: Get Word32;
+                                  req <- get :: Get Word8;
+                                  get :: Get Word16;
+                                  reqs ! fromIntegral ((req - 100) `div` 2) |]
+            return $ decl "decode" [Clause [] (NormalB body) []]
           encodeD = do
             x <- newName "x"
             m <- newName "m"
@@ -48,7 +58,7 @@ derive x = liftM (:[]) protocolInst
                                       return (n, typeName x))
                                  $ fromConstr con `asTypeOf` x
                     )
-          sizeClause (n, (con, argsm)) = do
+          sizeClause (_, (con, argsm)) = do
             args <- sequence argsm
             c <- newName "c"
             let pat = AsP c (ConP con (map (VarP . fst) args))
@@ -71,19 +81,47 @@ derive x = liftM (:[]) protocolInst
             let pat = AsP c (ConP con (map (VarP . fst) args))
             return $ Clause [pat] (NormalB (DoE (putsizeOfS c : putreqCodeS n : map gputS args))) []
           putsizeOfS c = NoBindS $ putE $ AppE (var "size") (VarE c)
-          putreqCodeS n = NoBindS $ putE (SigE (LitE (IntegerL (fromIntegral (requestFromIndex n)))) (ConT (mkName "Word8")))
+          putreqCodeS n = NoBindS $ putE (SigE (LitE (IntegerL (fromIntegral (requestFromIndex n)))) word8)
           gputS (arg, ty) =
               NoBindS $ case ty of
-                          "Data.ByteString.Lazy.Internal.ByteString" -> putByteStringS arg
+                          "Data.ByteString.Lazy.Internal.ByteString" ->
+                              putByteStringS arg
                           "Prelude.[]" -> putByteStringListS arg
                           _ -> putE (VarE arg)
           putByteStringS x =
               DoE [ NoBindS $ putE $ coerce (AppE (var "B.length") (VarE x)) word16
                   , NoBindS $ AppE (var "putLazyByteString") (VarE x) ]
-          putByteStringListS = undefined
+          putByteStringListS = undefined -- xxx
+          getBuilder (n, (con, argsm)) = do
+            args <- sequence argsm
+            binds <- mapM ggetS args
+            let ret = NoBindS $ AppE (var "return")
+                      $ foldl AppE (ConE con) (map (VarE . fst) args)
+            return $ DoE (binds ++ [ret])
+          ggetS (arg, ty) =
+              case ty of
+                "Data.ByteString.Lazy.Internal.ByteString" ->
+                    return (BindS (VarP arg)) `ap` getByteStringQ
+                "Prelude.[]" ->
+                    return (BindS (VarP arg)) `ap` getByteStringListQ
+                _ -> return (BindS (VarP arg) getE)
+          getByteStringQ = do
+             size <- newName "size"
+             return $ DoE [ BindS (SigP (VarP size) word16) getE
+                          , NoBindS $
+                            AppE (VarE (mkName "getLazyByteString"))
+                                     (AppE (VarE (mkName "fromIntegral")) (VarE size)) ]
+          getByteStringListQ = do
+             size <- newName "size"
+             getByteStringE <- getByteStringQ
+             return $ DoE [ BindS (SigP (VarP size) word8) getE
+                          , NoBindS $
+                            AppE (AppE (VarE (mkName "replicateM"))
+                                  (AppE (VarE (mkName "fromIntegral")) (VarE size))) getByteStringE ]
           var = VarE . mkName
           decl x clauses = FunD (mkName x) clauses
           putE = AppE (VarE (mkName "put"))
+          getE = VarE (mkName "get")
           coerce exp ty = SigE (AppE (var "fromIntegral") exp) ty
           word8 = ConT (mkName "Word8")
           word16 = ConT (mkName "Word16")

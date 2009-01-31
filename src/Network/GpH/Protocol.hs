@@ -5,6 +5,7 @@ import Network.GpH.Protocol.Derive
 import Network.GpH.Types
 import Data.Binary hiding (decode, encode)
 import Data.Binary.Put
+import Data.Binary.Get
 import Data.Word
 import qualified Data.ByteString.Lazy as B
 
