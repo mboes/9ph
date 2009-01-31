@@ -1,7 +1,7 @@
 module Network.GpH.Types where
 
 import Data.Word
-import Data.ByteString
+import Data.ByteString.Lazy
 import Data.Typeable
 import Data.Data
 
