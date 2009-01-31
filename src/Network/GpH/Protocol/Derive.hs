@@ -118,14 +118,14 @@ derive x = liftM (:[]) protocolInst
               case ty of
                 "Data.ByteString.Lazy.Internal.ByteString" ->
                     return (BindS (VarP arg)) `ap` getByteStringQ
-                "Prelude.[]" ->
+                "[]" ->
                     return (BindS (VarP arg)) `ap` getByteStringListQ
                 _ -> return (BindS (VarP arg) getE)
           getByteStringQ =
               [| do size <- get :: Get Word16
                     getLazyByteString (fromIntegral size) |]
           getByteStringListQ =
-              [| do size <- get :: Get Word8
+              [| do size <- get :: Get Word16
                     replicateM (fromIntegral size) $getByteStringQ |]
 
           -- Utilities
