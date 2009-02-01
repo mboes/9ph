@@ -43,11 +43,12 @@ derive x = liftM (:[]) protocolInst
                |]
 
           -- define 'encode'
-          encodeD = do
-            x <- newName "x"
-            m <- newName "m"
-            clauses <- mapM putClause $ zip [0..] constructors
-            return $ FunD (mkName "encode") [Clause [VarP x] (NormalB (AppE (var "runPut") (AppE (VarE m) (VarE x)))) [FunD m clauses]]
+          encodeD =
+              liftM head
+               [d| encode x = runPut (m x) where
+                       m x = $(liftM (CaseE (VarE 'x)) $ mapM putCase $ zip [0..] constructors)
+               |]
+
           typeName x = tyConString $ fst $ splitTyConApp $ typeOf x
           constructors = map gen $ dataTypeConstrs $ dataTypeOf x
           gen con = ( mkName (showConstr con)
