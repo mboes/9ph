@@ -4,20 +4,29 @@ import Data.Word
 import Data.ByteString.Lazy.Char8
 import Data.Typeable
 import Data.Data
+import Data.BitSet (BitSet)
 
+
+data QType = Qdir | Qappend | Qexcl | Qmount | Qauth | Qtmp
+             deriving (Eq, Enum, Ord, Show, Data, Typeable)
+
+data Permission = Pdir | Pappend | Pexcl | Pmount | Pauth | Ptmp
+                  deriving (Eq, Enum, Ord, Show, Data, Typeable)
 
 -- | A 13-byte wide field used to represent server-side unique identifiers.
-newtype Qid = Qid ByteString
+data Qid = Qid { qid_type    :: BitSet QType
+               , qid_version :: Word32
+               , qid_path    :: Word64 }
     deriving (Eq, Ord, Show, Data, Typeable)
 
--- | An arbitrary size field containing data read / to write.
-data FData
+-- | For version, error messages.
+data Info deriving Typeable
 
 -- | Used to hold user names, file names.
-data Name
+data Name deriving Typeable
 
--- | For version, error messages.
-data Info
+-- | An arbitrary size field containing data read / to write.
+data FData deriving Typeable
 
 -- | A field of arbitrary size. The type constructor is indexed by a
 -- phantom type indicating the semantics of the field and how to
@@ -32,7 +41,6 @@ type Fid = Word32
 type Mode = Word8
 type Count = Word32
 type IOUnit = Word32
-type Permission = Word32
 
 -- Based on the following abstraction of the wire protocol for
 -- requests given in the Plan9 Fourth Edition manual:
@@ -57,14 +65,14 @@ data Request = Tversion Size (UField Info)
              | Tattach Fid Fid (UField Name) (UField Name)
              | Twalk Fid Fid [UField Name]
              | Topen Fid Mode
-             | Tcreate Fid (UField Name) Permission Mode
+             | Tcreate Fid (UField Name) (BitSet Permission) Mode
              | Tread Fid Offset Count
              | Twrite Fid Offset (UField FData)
              | Tclunk Fid
              | Tremove Fid
              | Tstat Fid
              | Twstat Fid ByteString
-               deriving (Eq, Ord, Show, FData, Typeable)
+               deriving (Eq, Ord, Show, Data, Typeable)
 
 -- Based on the following abstraction of the wire protocol for
 -- responses given in the Plan9 Fourth Edition manual:
