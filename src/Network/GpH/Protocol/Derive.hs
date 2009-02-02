@@ -18,31 +18,38 @@ indexFromRequest :: Word8 -> Int
 indexFromRequest x = fromIntegral ((x - 100) `div` 2)
 
 derive :: Data a => a -> Q [Dec]
-derive x = liftM (:[]) protocolInst
-    where protocolInst = do
-            methods <- sequence [decodeD, encodeD]
+derive x = liftM (:[]) binaryInst
+    where binaryInst = do
+            methods <- sequence [getD, putD]
             return $ InstanceD []
-                       (AppT (ConT (mkName "Protocol"))
+                       (AppT (ConT (mkName "Binary"))
                                  (ConT (mkName (typeName x)))) (concat methods)
 
-          -- define 'decode'
-          decodeD =
-              [d| decode =
-                    let reqs = listArray (0, 14)
-                               $(liftM ListE $ mapM getBuilder constructors)
-                    in runGet $ do get :: Get Word32;
-                                   req <- get :: Get Word8;
-                                   get :: Get Word16;
-                                   reqs ! fromIntegral ((req - 100) `div` 2)
-               |]
+          -- define 'get'
+          getD = do
+            -- We have to jump through a hoop here to avoid Template Haskell
+            -- being too smart on us. Template Haskell doesn't know 'get' is a
+            -- method, so when we use 'get' at another type inside the
+            -- definition of 'get', Template Haskell will throw a type error.
+            --
+            -- Solution: use Oxford brackets only for the body of 'get', then
+            -- build the definition manually.
+            body <- [| let reqs = listArray (0, 14)
+                                  $(liftM ListE $ mapM getBuilder constructors)
+                       in do get :: Get Word32
+                             req <- get :: Get Word8
+                             get :: Get Word16
+                             reqs ! fromIntegral ((req - 100) `div` 2)
+                     |]
+            return [FunD (mkName "get") [Clause [] (NormalB body) []]]
 
-          -- define 'encode'
-          encodeD =
-               [d| encode x =
+          -- define 'put'
+          putD =
+               [d| put x =
                      let result = runPut (m x)
                          size = runPut $ put (fromIntegral $
                                               B.length result :: Word32)
-                     in B.append size result where
+                     in putLazyByteString $ B.append size result where
                          m x = $( liftM (CaseE (VarE 'x))
                                   $ mapM putCase $ zip [0..] constructors )
                |]
