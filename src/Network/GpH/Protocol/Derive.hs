@@ -11,12 +11,6 @@ import Data.Array
 import qualified Data.ByteString.Lazy.Char8 as B
 
 
-requestFromIndex :: Int -> Word8
-requestFromIndex x = fromIntegral (100 + (x * 2))
-
-indexFromRequest :: Word8 -> Int
-indexFromRequest x = fromIntegral ((x - 100) `div` 2)
-
 derive :: Data a => a -> Q [Dec]
 derive x = liftM (:[]) binaryInst
     where binaryInst = do
@@ -75,7 +69,7 @@ derive x = liftM (:[]) binaryInst
                       [putreqCode n, putTag]
             return $ Match pat (NormalB (DoE (header ++ puts))) []
           putreqCode n =
-              [| put ($(litE (integerL (fromIntegral (requestFromIndex n)))) :: Word8) |]
+              [| put ($(litE (integerL (100 + (n * 2)))) :: Word8) |]
           putTag = [| put (0 :: Word16) |]
           gput (arg, ty) =
               -- Binary provides an instance for lists but it doesn't do what
