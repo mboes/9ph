@@ -46,9 +46,12 @@ derive x = liftM (:[]) binaryInst
           -- define 'put'
           putD =
                [d| put x =
+                     -- Construct the encoding, then compute the length and
+                     -- prepend the encoding with it, of course not forgetting
+                     -- to count the size component.
                      let result = runPut (m x)
-                         size = runPut $ put (fromIntegral $
-                                              B.length result :: Word32)
+                         size = runPut
+                                $ put (4 + fromIntegral (B.length result) :: Word32)
                      in putLazyByteString $ B.append size result where
                          m x = $( liftM (CaseE (VarE 'x))
                                   $ mapM putCase $ zip [0..] constructors )
