@@ -1,4 +1,4 @@
-name:           9pH
+name:           GpH
 version:        0.1
 author:         Mathieu Boespflug, Christophe Calvès
 homepage:       http://code.haskell.org/~mboes/vcard.git
@@ -17,6 +17,14 @@ build-type:     Simple
 tested-with:    GHC ==6.10
 
 library
-    extensions:      OverloadedStrings, PatternGuards
-    build-depends:   base >= 3, containers, bytestring >= 0.9
+    extensions:      OverloadedStrings, PatternGuards, TemplateHaskell
+                     EmptyDataDecls, DeriveDataTypeable
+    build-depends:   base >= 3, containers, bytestring >= 0.9, 
+                     binary >= 0.4, array >= 0.2, bitset >= 0.6,
+                     syb, template-haskell >= 2.3
+    hs-source-dirs:  src
     exposed-modules: Network.GpH
+                     Network.GpH.Types
+                     Network.GpH.Protocol
+    other-modules:   Network.GpH.Protocol.Derive
+
