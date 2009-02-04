@@ -8,10 +8,10 @@ import Data.BitSet (BitSet)
 
 
 data QType = Qdir | Qappend | Qexcl | Qmount | Qauth | Qtmp
-             deriving (Eq, Enum, Ord, Show, Data, Typeable)
+             deriving (Eq, Ord, Show, Data, Typeable)
 
 data Permission = Pdir | Pappend | Pexcl | Pmount | Pauth | Ptmp
-                  deriving (Eq, Enum, Ord, Show, Data, Typeable)
+                  deriving (Eq, Ord, Show, Data, Typeable)
 
 -- | A 13-byte wide field used to represent server-side unique identifiers.
 data Qid = Qid { qid_type    :: BitSet QType
@@ -107,3 +107,35 @@ data Reply = Rversion Size (UField Info)
            | Rstat ByteString
            | Rwstat
              deriving (Eq, Ord, Show, Data, Typeable)
+
+-- Bits set by each flag, adapted from 9p.h.
+
+instance Enum QType where
+    fromEnum Qdir    = 0x80000000
+    fromEnum Qappend = 0x40000000
+    fromEnum Qexcl   = 0x20000000
+    fromEnum Qmount  = 0x10000000
+    fromEnum Qauth   = 0x08000000
+    fromEnum Qtmp    = 0x04000000
+
+    toEnum 0x80000000 = Qdir
+    toEnum 0x40000000 = Qappend
+    toEnum 0x20000000 = Qexcl
+    toEnum 0x10000000 = Qmount
+    toEnum 0x08000000 = Qauth
+    toEnum 0x04000000 = Qtmp
+
+instance Enum Permission where
+    fromEnum Pdir    = 0x80000000
+    fromEnum Pappend = 0x40000000
+    fromEnum Pexcl   = 0x20000000
+    fromEnum Pmount  = 0x10000000
+    fromEnum Pauth   = 0x08000000
+    fromEnum Ptmp    = 0x04000000
+
+    toEnum 0x80000000 = Pdir
+    toEnum 0x40000000 = Pappend
+    toEnum 0x20000000 = Pexcl
+    toEnum 0x10000000 = Pmount
+    toEnum 0x08000000 = Pauth
+    toEnum 0x04000000 = Ptmp
