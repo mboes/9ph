@@ -6,7 +6,6 @@ import Data.Binary.Get
 import Data.Binary.Put
 import Data.Generics
 import Control.Monad
-import Foreign.Storable
 import Data.Array
 import qualified Data.ByteString.Lazy.Char8 as B
 
