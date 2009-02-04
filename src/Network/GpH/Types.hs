@@ -7,10 +7,15 @@ import Data.Data
 import Data.BitSet (BitSet)
 
 
+-- | Type of a qid.
 data QType = Qdir | Qappend | Qexcl | Qmount | Qauth | Qtmp
              deriving (Eq, Ord, Show, Data, Typeable)
 
 data Permission = Pdir | Pappend | Pexcl | Pmount | Pauth | Ptmp
+                  deriving (Eq, Ord, Show, Data, Typeable)
+
+-- | Open mode.
+data Mode = Oread | Owrite | Ordwr | Oexec | Otrunc | Orexec | Orclose | Oappend | Oexcl
                   deriving (Eq, Ord, Show, Data, Typeable)
 
 -- | A 13-byte wide field used to represent server-side unique identifiers.
@@ -38,7 +43,6 @@ type Size = Word32
 type Tag = Word16
 type Offset = Word64
 type Fid = Word32
-type Mode = Word8
 type Count = Word32
 type IOUnit = Word32
 
@@ -139,3 +143,24 @@ instance Enum Permission where
     toEnum 0x10000000 = Pmount
     toEnum 0x08000000 = Pauth
     toEnum 0x04000000 = Ptmp
+
+instance Enum Mode where
+    fromEnum Oread = 0x00
+    fromEnum Owrite = 0x01
+    fromEnum Ordwr = 0x02
+    fromEnum Oexec = 0x03
+    fromEnum Otrunc = 0x10
+    fromEnum Orexec = 0x20
+    fromEnum Orclose = 0x40
+    fromEnum Oappend = 0x80
+    fromEnum Oexcl = 0x1000
+
+    toEnum 0x00 = Oread
+    toEnum 0x01 = Owrite
+    toEnum 0x02 = Ordwr
+    toEnum 0x03 = Oexec
+    toEnum 0x10 = Otrunc
+    toEnum 0x20 = Orexec
+    toEnum 0x40 = Orclose
+    toEnum 0x80 = Oappend
+    toEnum 0x1000 = Oexcl
