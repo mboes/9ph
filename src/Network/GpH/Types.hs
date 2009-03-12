@@ -68,8 +68,8 @@ data Request = Tversion Size (UField Info)
              | Tflush Tag
              | Tattach Fid Fid (UField Name) (UField Name)
              | Twalk Fid Fid [UField Name]
-             | Topen Fid Mode
-             | Tcreate Fid (UField Name) (BitSet Permission) Mode
+             | Topen Fid (BitSet Mode)
+             | Tcreate Fid (UField Name) (BitSet Permission) (BitSet Mode)
              | Tread Fid Offset Count
              | Twrite Fid Offset (UField FData)
              | Tclunk Fid

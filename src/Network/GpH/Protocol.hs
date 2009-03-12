@@ -23,6 +23,11 @@ instance Binary (BitSet Permission) where
              return $ BitSet.unsafeFromIntegral w
     put bs = put (BitSet.toIntegral bs :: Word32)
 
+instance Binary (BitSet Mode) where
+    get = do w :: Word8 <- get
+             return $ BitSet.unsafeFromIntegral w
+    put bs = put (BitSet.toIntegral bs :: Word8)
+
 instance Binary (UField Info) where
     get = do len :: Word16 <- get
              liftM UF $ getLazyByteString (fromIntegral len)
