@@ -15,13 +15,13 @@ import qualified Data.BitSet as BitSet
 
 instance Binary (BitSet QType) where
     get = do w :: Word8 <- get
-             return BitSet.coerceTo w
-    put bs = put (BitSet.coerceFrom bs :: Word8)
+             return $ BitSet.unsafeFromIntegral w
+    put bs = put (BitSet.toIntegral bs :: Word8)
 
 instance Binary (BitSet Permission) where
     get = do w :: Word32 <- get
-             return BitSet.coerceTo w
-    put bs = put (BitSet.coerceFrom bs :: Word32)
+             return $ BitSet.unsafeFromIntegral w
+    put bs = put (BitSet.toIntegral bs :: Word32)
 
 instance Binary (UField Info) where
     get = do len :: Word16 <- get
